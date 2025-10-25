@@ -1,0 +1,15 @@
+model_id: "gpt2"
+quantization: 4
+api:
+  prompts: null
+  reward: null
+  results: null
+params:
+  num_candidates: 6
+  max_new_tokens: 128
+  top_k: 5
+  scoring_api_timeout: 5
+data_paths:
+  prompts: "data/prompts.jsonl"
+  comparisons: "data/comparisons.jsonl"
+  outputs: "data/outputs/baseline.jsonl"

@@ -1,0 +1,22 @@
+# Core ML libraries - Updated for Python 3.13 compatibility
+transformers==4.46.3           # Latest stable, better model support & performance
+torch>=2.0.0                   # Modern PyTorch with better CUDA support
+accelerate==1.2.1              # Updated for transformers 4.46+
+
+# Quantization & optimization
+bitsandbytes==0.45.0           # Python 3.13 compatible, improved 4-bit quantization
+
+# NLP & embeddings
+sentence-transformers==3.3.1   # Python 3.13 compatible, better model handling
+
+# ML utilities
+scikit-learn==1.5.2            # First version with Python 3.13 support
+joblib                         # For model serialization (used by sklearn)
+
+# Web interface
+streamlit==1.40.2              # Python 3.13 compatible, modern UI features
+
+# Standard libraries
+requests                       # HTTP client for API calls
+pydantic                       # Data validation
+PyYAML                         # Config file parsing
