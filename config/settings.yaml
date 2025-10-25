@@ -1,4 +1,4 @@
-model_id: "gpt2"
+model_id: "mistralai/Mistral-7B-Instruct-v0.1"  # Change this to your local model path
 quantization: 4
 api:
   prompts: null
