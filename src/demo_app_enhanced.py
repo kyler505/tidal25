@@ -87,16 +87,41 @@ def save_user_ocean_profile(ocean_profile):
     with open(profile_path, 'w') as f:
         json.dump(ocean_profile, f, indent=2)
 
-def update_ocean_from_feedback(current_ocean, feedback_type, response_ocean, learning_rate=0.1):
-    """Update user's OCEAN profile based on feedback
+def calculate_dynamic_learning_rate(feedback_count, base_rate=0.25, min_rate=0.05, decay_factor=0.85):
+    """Calculate a dynamic learning rate that decreases as feedback increases
+
+    Args:
+        feedback_count: Number of feedback entries so far
+        base_rate: Starting learning rate (higher = faster initial learning)
+        min_rate: Minimum learning rate to prevent complete stagnation
+        decay_factor: Rate of decay (lower = faster decay)
+
+    Returns:
+        Dynamic learning rate between min_rate and base_rate
+    """
+    # Exponential decay: rate = base_rate * (decay_factor ^ feedback_count)
+    # Ensures early feedback has much more impact
+    dynamic_rate = base_rate * (decay_factor ** (feedback_count / 10))
+    return max(min_rate, dynamic_rate)
+
+def update_ocean_from_feedback(current_ocean, feedback_type, response_ocean, learning_rate=None):
+    """Update user's OCEAN profile based on feedback with dynamic learning rate
 
     Args:
         current_ocean: User's current OCEAN scores
         feedback_type: 'positive' or 'negative'
         response_ocean: OCEAN profile that generated the response
-        learning_rate: How much to adjust (0.0-1.0)
+        learning_rate: Optional fixed learning rate (if None, uses dynamic rate)
     """
     updated_ocean = current_ocean.copy()
+    feedback_count = current_ocean.get('feedback_count', 0)
+
+    # Use dynamic learning rate if not specified
+    if learning_rate is None:
+        learning_rate = calculate_dynamic_learning_rate(feedback_count)
+
+    # Store the learning rate used for this update (for debugging/transparency)
+    updated_ocean['last_learning_rate'] = learning_rate
 
     for dimension in ['openness', 'conscientiousness', 'extraversion', 'agreeableness', 'neuroticism']:
         current_val = updated_ocean.get(dimension, 0.5)
@@ -113,7 +138,7 @@ def update_ocean_from_feedback(current_ocean, feedback_type, response_ocean, lea
         new_val = current_val + adjustment
         updated_ocean[dimension] = max(0.0, min(1.0, new_val))
 
-    updated_ocean['feedback_count'] = updated_ocean.get('feedback_count', 0) + 1
+    updated_ocean['feedback_count'] = feedback_count + 1
     return updated_ocean
 
 def save_feedback_data(prompt, response, ocean_profile, feedback_type):
@@ -779,7 +804,7 @@ with tab1:
 
                     with col_yes:
                         if st.button("✓ Yes, this helped", use_container_width=True):
-                            updated = update_ocean_from_feedback(user_profile, 'positive', selected_ocean, 0.15)
+                            updated = update_ocean_from_feedback(user_profile, 'positive', selected_ocean)
                             st.session_state.user_ocean_profile = updated
                             save_user_ocean_profile(updated)
                             save_feedback_data(user_input, response, selected_ocean, 'positive')
@@ -789,7 +814,7 @@ with tab1:
 
                     with col_no:
                         if st.button("✕ Not helpful", use_container_width=True):
-                            updated = update_ocean_from_feedback(user_profile, 'negative', selected_ocean, 0.1)
+                            updated = update_ocean_from_feedback(user_profile, 'negative', selected_ocean)
                             st.session_state.user_ocean_profile = updated
                             save_user_ocean_profile(updated)
                             save_feedback_data(user_input, response, selected_ocean, 'negative')
@@ -879,7 +904,7 @@ with tab2:
                 'positive'
             )
             updated = update_ocean_from_feedback(
-                user_profile, 'positive', st.session_state.auto_ocean_a, 0.15
+                user_profile, 'positive', st.session_state.auto_ocean_a
             )
             st.session_state.user_ocean_profile = updated
             save_user_ocean_profile(updated)
@@ -907,7 +932,7 @@ with tab2:
                 'positive'
             )
             updated = update_ocean_from_feedback(
-                user_profile, 'positive', st.session_state.auto_ocean_b, 0.15
+                user_profile, 'positive', st.session_state.auto_ocean_b
             )
             st.session_state.user_ocean_profile = updated
             save_user_ocean_profile(updated)
@@ -1049,6 +1074,30 @@ with tab3:
                 </div>
             </div>
             """, unsafe_allow_html=True)
+
+        st.markdown("")
+
+        # Show learning rate information
+        current_learning_rate = calculate_dynamic_learning_rate(feedback_count)
+        learning_progress = min(100, (feedback_count / 50) * 100)  # Scale to show progress toward refinement
+
+        st.markdown("### Learning Rate")
+        st.markdown(f"""
+        <div class="comparison-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                <p class="comparison-text" style="margin: 0;">Current adjustment strength: <strong>{current_learning_rate:.1%}</strong></p>
+                <span style="font-size: 0.8rem; color: var(--muted-foreground);">{feedback_count} responses</span>
+            </div>
+            <div style="background: var(--muted); height: 8px; border-radius: 4px; overflow: hidden; margin-top: 0.5rem;">
+                <div style="background: linear-gradient(90deg, #8A2BE2 0%, #00BCD4 100%); height: 100%; width: {learning_progress}%;"></div>
+            </div>
+            <p style="font-size: 0.8rem; color: var(--muted-foreground); margin-top: 0.5rem;">
+                {'Early learning phase - Your feedback has high impact!' if feedback_count < 10 else
+                 'Building phase - Profile refining quickly' if feedback_count < 25 else
+                 'Refinement phase - Making subtle adjustments'}
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
 
         st.markdown("")
         st.markdown("### What This Means")
